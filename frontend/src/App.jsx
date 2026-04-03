@@ -101,7 +101,7 @@ export default function App() {
   return (
     <main className="page">
       <header className="header">
-        <h1>ClearAlpha Dashboard</h1>
+        <h1>FinVizaard Dashboard</h1>
         <p>Regime detection + prediction + explainability</p>
       </header>
 

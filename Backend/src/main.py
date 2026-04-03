@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 
@@ -10,7 +11,14 @@ from . import claude_narrator
 from . import database
 
 
-app = FastAPI(title="ClearAlpha Backend", version="0.1.0")
+app = FastAPI(title="FinVizaard Backend", version="0.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class IngestRequest(BaseModel):
@@ -40,6 +48,8 @@ async def ingest(req: IngestRequest) -> dict:
         n_rows = data_ingestion.ingest_tickers(
             tickers=req.tickers, start_date=req.start_date, end_date=req.end_date
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover - basic guardrail
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -89,5 +99,5 @@ async def candles(ticker: str, limit: int = 300) -> dict:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("Backend.src.main:app", host="0.0.0.0", port=8000, reload=True)
 

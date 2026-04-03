@@ -1,2 +1,2 @@
-"""Backend package for ClearAlpha."""
+"""Backend package for FinVizaard."""
 

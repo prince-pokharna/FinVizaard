@@ -1,7 +1,7 @@
 import duckdb
 
 
-def get_duckdb_connection(path: str = "data/clearalpha.duckdb") -> duckdb.DuckDBPyConnection:
+def get_duckdb_connection(path: str = "data/finvizaard.duckdb") -> duckdb.DuckDBPyConnection:
     return duckdb.connect(path)
 
 
