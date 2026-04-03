@@ -1,0 +1,180 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, Segoe UI, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #020617;
+  color: #e2e8f0;
+}
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.header p {
+  margin-top: 8px;
+  color: #94a3b8;
+}
+
+.panel {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.controls {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(140px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+label {
+  font-size: 0.85rem;
+  color: #93c5fd;
+}
+
+input {
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #0b1220;
+  color: #e2e8f0;
+  padding: 0 10px;
+}
+
+.actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+button {
+  height: 36px;
+  border: 1px solid #334155;
+  background: #1d4ed8;
+  color: white;
+  border-radius: 8px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.status {
+  grid-column: 1 / -1;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+.grid .panel:nth-child(3) {
+  grid-column: 1 / -1;
+}
+
+.chartContainer {
+  width: 100%;
+  height: 320px;
+}
+
+.kv {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: #cbd5e1;
+}
+
+.narrative {
+  margin-top: 12px;
+  line-height: 1.45;
+  color: #cbd5e1;
+}
+
+.muted {
+  color: #94a3b8;
+}
+
+.bars {
+  display: grid;
+  gap: 10px;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: 180px 1fr 90px;
+  gap: 8px;
+  align-items: center;
+}
+
+.barLabel {
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+
+.barTrack {
+  height: 10px;
+  background: #0b1220;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+}
+
+.barFill.pos {
+  background: #16a34a;
+}
+
+.barFill.neg {
+  background: #dc2626;
+}
+
+.barValue {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #cbd5e1;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .controls {
+    grid-template-columns: 1fr;
+  }
+}
+
