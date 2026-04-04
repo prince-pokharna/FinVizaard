@@ -26,6 +26,7 @@ export default function App() {
   const [regime, setRegime] = useState("");
   const [pricePrediction, setPricePrediction] = useState(null);
   const [explanation, setExplanation] = useState({});
+  const [shapBaseValue, setShapBaseValue] = useState(null);
   const [narrative, setNarrative] = useState("");
   const [status, setStatus] = useState("Ready.");
   const [busy, setBusy] = useState(false);
@@ -89,6 +90,15 @@ export default function App() {
     try {
       const res = await api.post("/explain", { ticker: cleanTicker });
       setExplanation(res.data.explanation || {});
+      setShapBaseValue(
+        typeof res.data.base_value === "number" ? res.data.base_value : null
+      );
+      if (typeof res.data.regime === "string" && res.data.regime) {
+        setRegime(res.data.regime);
+      }
+      if (typeof res.data.predicted_next_close === "number") {
+        setPricePrediction(res.data.predicted_next_close);
+      }
       setNarrative(res.data.narrative || "");
       setStatus("Explanation generated.");
     } catch (err) {
@@ -135,7 +145,11 @@ export default function App() {
           pricePrediction={pricePrediction}
           ticker={cleanTicker}
         />
-        <ShapBarChart explanation={explanation} />
+        <ShapBarChart
+          explanation={explanation}
+          baseValue={shapBaseValue}
+          predictedPrice={pricePrediction}
+        />
       </section>
     </main>
   );

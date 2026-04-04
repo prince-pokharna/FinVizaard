@@ -155,11 +155,121 @@ button:disabled {
 }
 
 .barFill.pos {
-  background: #16a34a;
+  background: #22c55e;
 }
 
 .barFill.neg {
-  background: #dc2626;
+  background: #ef4444;
+}
+
+.shapAxisLabel {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.shapViewToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.shapViewToggle button {
+  background: #0b1220;
+  border: 1px solid #334155;
+}
+
+.shapViewToggle button.active {
+  background: #1d4ed8;
+  border-color: #2563eb;
+}
+
+.shapToggleSep {
+  color: #64748b;
+  user-select: none;
+}
+
+.waterfall {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wfRow {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) 1fr minmax(120px, 160px);
+  gap: 10px;
+  align-items: center;
+}
+
+.wfLabel {
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  word-break: break-word;
+}
+
+.wfTrack {
+  position: relative;
+  height: 24px;
+  background: #0b1220;
+  border: 1px solid #334155;
+  border-radius: 6px;
+}
+
+.wfBar {
+  position: absolute;
+  top: 4px;
+  height: 16px;
+  border-radius: 4px;
+  min-width: 2px;
+}
+
+.wfBar.pos {
+  background: #22c55e;
+}
+
+.wfBar.neg {
+  background: #ef4444;
+}
+
+.wfMarker {
+  position: absolute;
+  top: 2px;
+  width: 3px;
+  height: 20px;
+  background: #94a3b8;
+  border-radius: 1px;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.wfMarkerAccent {
+  background: #38bdf8;
+}
+
+.wfValues {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+  color: #cbd5e1;
+}
+
+.wfDelta {
+  color: #93c5fd;
+}
+
+.wfEnd {
+  color: #e2e8f0;
+}
+
+.wfHint {
+  margin-top: 8px;
+  font-size: 0.8rem;
 }
 
 .barValue {

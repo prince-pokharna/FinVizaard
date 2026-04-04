@@ -14,7 +14,7 @@ def predict_price(ticker: str, as_of: Optional[str] = None) -> float:
     if not ticker:
         raise ValueError("Ticker is required.")
 
-    model, _, X_latest, _ = get_model_artifacts(ticker, as_of=as_of)
+    model, _, X_latest, _, _ = get_model_artifacts(ticker, as_of=as_of)
     return float(model.predict(X_latest)[0])
 
 
@@ -23,11 +23,12 @@ def get_model_artifacts(
     *,
     as_of: Optional[str] = None,
     limit: int = 2500,
-) -> Tuple[XGBRegressor, list, pd.DataFrame, pd.DataFrame]:
+) -> Tuple[XGBRegressor, list, pd.DataFrame, pd.DataFrame, float]:
     """
-    Returns: (model, feature_cols, X_latest, X_background)
+    Returns: (model, feature_cols, X_latest, X_background, last_close)
     - X_latest is a 1-row dataframe to explain/predict
     - X_background is a small training sample for SHAP baselines
+    - last_close is the latest observed close in the price window used
     """
     if not ticker:
         raise ValueError("Ticker is required.")
@@ -67,7 +68,9 @@ def get_model_artifacts(
     train_feats = feats.dropna()
     X_bg = train_feats[feature_cols].tail(200) if len(train_feats) > 200 else train_feats[feature_cols]
 
-    return model, feature_cols, X_latest, X_bg
+    last_close = float(prices.sort_values("ts")["close"].iloc[-1])
+
+    return model, feature_cols, X_latest, X_bg, last_close
 
 
 def _train_model(prices: pd.DataFrame) -> Tuple[XGBRegressor, list]:

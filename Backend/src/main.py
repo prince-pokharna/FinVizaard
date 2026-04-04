@@ -72,14 +72,34 @@ async def predict(req: PredictRequest) -> dict:
 @app.post("/explain")
 async def explain(req: ExplainRequest) -> dict:
     try:
-        explanation = shap_explainer.explain_prediction(req.ticker, req.as_of)
-        narrative = claude_narrator.narrate_explanation(explanation)
+        result = shap_explainer.explain_prediction(req.ticker, req.as_of)
+        explanation = result["explanation"]
+        base_value = result["base_value"]
+        predicted_value = result["predicted_value"]
+        last_close = result["last_close"]
+        regime = hmm_model.predict_regime(req.ticker, req.as_of)
+        narrative = claude_narrator.narrate_explanation(
+            ticker=req.ticker.strip().upper(),
+            regime=regime,
+            predicted_next_close=predicted_value,
+            last_close=last_close,
+            explanation=explanation,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    return {"ticker": req.ticker, "as_of": req.as_of, "explanation": explanation, "narrative": narrative}
+    return {
+        "ticker": req.ticker,
+        "as_of": req.as_of,
+        "explanation": explanation,
+        "narrative": narrative,
+        "base_value": base_value,
+        "predicted_next_close": predicted_value,
+        "last_close": last_close,
+        "regime": regime,
+    }
 
 
 @app.get("/candles/{ticker}")
