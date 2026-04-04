@@ -1,4 +1,4 @@
-export default function ExplanationCard({ narrative, regime, pricePrediction, ticker }) {
+export default function ExplanationCard({ narrative, regime, pricePrediction, ticker, sentiment }) {
   return (
     <div className="panel">
       <h3>AI Explanation</h3>
@@ -8,7 +8,17 @@ export default function ExplanationCard({ narrative, regime, pricePrediction, ti
       </div>
       <div className="kv">
         <span>Regime</span>
-        <strong>{regime || "-"}</strong>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+          <strong>{regime || "-"}</strong>
+          {sentiment && (
+            <span 
+              className={`sentiment-pill ${sentiment.label}`}
+              data-reason={sentiment.top_reason}
+            >
+              News: {sentiment.label} ({sentiment.score.toFixed(2)})
+            </span>
+          )}
+        </div>
       </div>
       <div className="kv">
         <span>Predicted Next Close</span>

@@ -9,6 +9,7 @@ from . import xgboost_model
 from . import shap_explainer
 from . import claude_narrator
 from . import database
+from . import sentiment_analyzer
 
 
 app = FastAPI(title="FinVizaard Backend", version="0.1.0")
@@ -48,6 +49,16 @@ async def ingest(req: IngestRequest) -> dict:
         n_rows = data_ingestion.ingest_tickers(
             tickers=req.tickers, start_date=req.start_date, end_date=req.end_date
         )
+        
+        # Call get_ticker_sentiment for each ticker and store in DuckDB
+        conn = database.get_duckdb_connection()
+        try:
+            for ticker in req.tickers:
+                sentiment = sentiment_analyzer.get_ticker_sentiment(ticker)
+                database.upsert_sentiment(conn, ticker, sentiment)
+        finally:
+            conn.close()
+            
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover - basic guardrail
@@ -100,6 +111,15 @@ async def explain(req: ExplainRequest) -> dict:
         "last_close": last_close,
         "regime": regime,
     }
+
+
+@app.get("/sentiment/{ticker}")
+async def get_sentiment_endpoint(ticker: str) -> dict:
+    try:
+        sentiment = sentiment_analyzer.get_ticker_sentiment(ticker.strip().upper())
+        return sentiment
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.get("/candles/{ticker}")

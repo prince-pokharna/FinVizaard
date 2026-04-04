@@ -25,6 +25,7 @@ export default function App() {
   const [candles, setCandles] = useState([]);
   const [regime, setRegime] = useState("");
   const [pricePrediction, setPricePrediction] = useState(null);
+  const [sentiment, setSentiment] = useState(null);
   const [explanation, setExplanation] = useState({});
   const [shapBaseValue, setShapBaseValue] = useState(null);
   const [narrative, setNarrative] = useState("");
@@ -75,7 +76,12 @@ export default function App() {
       const res = await api.post("/predict", { ticker: cleanTicker });
       setRegime(res.data.regime);
       setPricePrediction(res.data.price_prediction);
-      setStatus(`Prediction ready for ${cleanTicker}.`);
+
+      setStatus("Fetching news sentiment...");
+      const sRes = await api.get(`/sentiment/${cleanTicker}`);
+      setSentiment(sRes.data);
+
+      setStatus(`Prediction and sentiment ready for ${cleanTicker}.`);
     } catch (err) {
       setStatus(extractError(err, "Prediction failed."));
     } finally {
@@ -144,6 +150,7 @@ export default function App() {
           regime={regime}
           pricePrediction={pricePrediction}
           ticker={cleanTicker}
+          sentiment={sentiment}
         />
         <ShapBarChart
           explanation={explanation}

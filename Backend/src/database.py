@@ -1,3 +1,4 @@
+from datetime import datetime
 import duckdb
 
 
@@ -20,6 +21,20 @@ def init_duckdb_schema(conn: duckdb.DuckDBPyConnection) -> None:
         """
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_prices_ticker_ts ON prices(ticker, ts)")
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS sentiment_cache (
+            ticker TEXT,
+            date TEXT,
+            label TEXT,
+            score REAL,
+            top_reason TEXT,
+            article_count INTEGER
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sentiment_ticker_date ON sentiment_cache(ticker, date)")
 
 
 def insert_price_rows(conn: duckdb.DuckDBPyConnection, df) -> int:
@@ -87,4 +102,49 @@ def fetch_candles(
         }
         for r in rows
     ]
+
+
+def upsert_sentiment(conn: duckdb.DuckDBPyConnection, ticker: str, sentiment: dict):
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    # DuckDB doesn't have native UPSERT, so we delete and insert
+    conn.execute(
+        "DELETE FROM sentiment_cache WHERE ticker = ? AND date = ?",
+        [ticker, date_str]
+    )
+    conn.execute(
+        """
+        INSERT INTO sentiment_cache (ticker, date, label, score, top_reason, article_count)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ticker,
+            date_str,
+            sentiment.get("label", "neutral"),
+            float(sentiment.get("score", 0.0)),
+            sentiment.get("top_reason", ""),
+            int(sentiment.get("article_count", 0))
+        ]
+    )
+
+
+def get_sentiment(conn: duckdb.DuckDBPyConnection, ticker: str) -> dict:
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    row = conn.execute(
+        """
+        SELECT label, score, top_reason, article_count
+        FROM sentiment_cache
+        WHERE ticker = ? AND date = ?
+        """,
+        [ticker, date_str]
+    ).fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "label": row[0],
+        "score": float(row[1]),
+        "top_reason": row[2],
+        "article_count": int(row[3])
+    }
 
