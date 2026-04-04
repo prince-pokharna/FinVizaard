@@ -1,4 +1,4 @@
-from typing import Iterable, List
+from typing import Iterable, List, Tuple
 from pathlib import Path
 
 import numpy as np
@@ -23,7 +23,7 @@ def ingest_tickers(tickers: Iterable[str], start_date: str, end_date: str) -> in
     if start_ts >= end_ts:
         raise ValueError("start_date must be earlier than end_date.")
 
-    data = _download_prices_with_fallback(tickers_list, start_date, end_date)
+    data, used_synthetic = _download_prices_with_fallback(tickers_list, start_date, end_date)
 
     prices_df = _normalize_yfinance_prices(data, tickers_list)
     if prices_df.empty:
@@ -34,16 +34,21 @@ def ingest_tickers(tickers: Iterable[str], start_date: str, end_date: str) -> in
     try:
         database.init_duckdb_schema(conn)
         inserted = database.insert_price_rows(conn, prices_df)
+        database.set_ingest_synthetic_flags(conn, tickers_list, 1 if used_synthetic else 0)
     finally:
         conn.close()
 
     return int(inserted)
 
 
-def _download_prices_with_fallback(tickers: List[str], start_date: str, end_date: str) -> pd.DataFrame:
+def _download_prices_with_fallback(
+    tickers: List[str], start_date: str, end_date: str
+) -> Tuple[pd.DataFrame, bool]:
     """
     Try Yahoo Finance first. If unavailable/rate-limited, generate deterministic
     synthetic OHLCV series so the full app workflow remains usable.
+
+    Returns (ohlcv_dataframe, used_synthetic).
     """
     try:
         data = yf.download(
@@ -55,12 +60,12 @@ def _download_prices_with_fallback(tickers: List[str], start_date: str, end_date
             threads=False,
         )
         if not data.empty:
-            return data
+            return data, False
     except Exception:
         # Fall back below.
         pass
 
-    return _build_synthetic_market_data(tickers, start_date, end_date)
+    return _build_synthetic_market_data(tickers, start_date, end_date), True
 
 
 def _build_synthetic_market_data(tickers: List[str], start_date: str, end_date: str) -> pd.DataFrame:

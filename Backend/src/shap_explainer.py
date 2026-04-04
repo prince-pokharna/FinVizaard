@@ -1,4 +1,4 @@
-from typing import Dict, Optional, TypedDict
+from typing import Dict, List, Optional, TypedDict
 
 import numpy as np
 import shap
@@ -11,6 +11,7 @@ class ExplainResult(TypedDict):
     base_value: float
     predicted_value: float
     last_close: float
+    feature_columns: List[str]
 
 
 def explain_prediction(ticker: str, as_of: Optional[str] = None) -> ExplainResult:
@@ -36,4 +37,5 @@ def explain_prediction(ticker: str, as_of: Optional[str] = None) -> ExplainResul
         "base_value": base_value,
         "predicted_value": predicted_value,
         "last_close": last_close,
+        "feature_columns": list(feature_cols),
     }

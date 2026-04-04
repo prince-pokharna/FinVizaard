@@ -110,6 +110,7 @@ async def explain(req: ExplainRequest) -> dict:
         "predicted_next_close": predicted_value,
         "last_close": last_close,
         "regime": regime,
+        "feature_columns": result["feature_columns"],
     }
 
 

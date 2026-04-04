@@ -4,8 +4,16 @@ function axisLabelText() {
   return "Impact on predicted price ($)";
 }
 
-function buildWaterfall(explanation, baseValue, predictedPrice) {
-  const entries = Object.entries(explanation || {});
+function orderedFeatureEntries(explanation, featureColumns) {
+  const exp = explanation || {};
+  if (Array.isArray(featureColumns) && featureColumns.length) {
+    return featureColumns.map((k) => [k, typeof exp[k] === "number" ? exp[k] : 0]);
+  }
+  return Object.entries(exp);
+}
+
+function buildWaterfall(explanation, baseValue, predictedPrice, featureColumns) {
+  const entries = orderedFeatureEntries(explanation, featureColumns);
   if (baseValue == null || !Number.isFinite(baseValue)) return null;
 
   const pred =
@@ -64,10 +72,18 @@ function scaleBounds(steps) {
   return { min: min - pad, max: max + pad };
 }
 
-export default function ShapBarChart({ explanation, baseValue, predictedPrice }) {
+export default function ShapBarChart({
+  explanation,
+  baseValue,
+  predictedPrice,
+  featureColumns
+}) {
   const [mode, setMode] = useState("bar");
 
-  const items = useMemo(() => Object.entries(explanation || {}), [explanation]);
+  const items = useMemo(
+    () => orderedFeatureEntries(explanation, featureColumns),
+    [explanation, featureColumns]
+  );
 
   const maxAbs = useMemo(() => {
     if (!items.length) return 1;
@@ -75,8 +91,8 @@ export default function ShapBarChart({ explanation, baseValue, predictedPrice })
   }, [items]);
 
   const wf = useMemo(
-    () => buildWaterfall(explanation, baseValue, predictedPrice),
-    [explanation, baseValue, predictedPrice]
+    () => buildWaterfall(explanation, baseValue, predictedPrice, featureColumns),
+    [explanation, baseValue, predictedPrice, featureColumns]
   );
 
   const bounds = useMemo(() => (wf ? scaleBounds(wf.steps) : { min: 0, max: 1 }), [wf]);

@@ -28,6 +28,7 @@ export default function App() {
   const [sentiment, setSentiment] = useState(null);
   const [explanation, setExplanation] = useState({});
   const [shapBaseValue, setShapBaseValue] = useState(null);
+  const [featureColumns, setFeatureColumns] = useState([]);
   const [narrative, setNarrative] = useState("");
   const [status, setStatus] = useState("Ready.");
   const [busy, setBusy] = useState(false);
@@ -105,6 +106,9 @@ export default function App() {
       if (typeof res.data.predicted_next_close === "number") {
         setPricePrediction(res.data.predicted_next_close);
       }
+      setFeatureColumns(
+        Array.isArray(res.data.feature_columns) ? res.data.feature_columns : []
+      );
       setNarrative(res.data.narrative || "");
       setStatus("Explanation generated.");
     } catch (err) {
@@ -156,6 +160,7 @@ export default function App() {
           explanation={explanation}
           baseValue={shapBaseValue}
           predictedPrice={pricePrediction}
+          featureColumns={featureColumns}
         />
       </section>
     </main>

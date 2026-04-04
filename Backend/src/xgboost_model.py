@@ -7,7 +7,27 @@ from . import database
 from .features import make_features, latest_row
 
 
-_MODEL_CACHE: Dict[str, Tuple[pd.Timestamp, XGBRegressor, list]] = {}
+FEATURE_COLS = [
+    "ret_1",
+    "ret_5",
+    "vol_5",
+    "vol_20",
+    "ma_5",
+    "ma_20",
+    "ma_ratio",
+    "range",
+    "vol_chg",
+    "vix_close",
+    "vix_change",
+    "sentiment_score",
+    "ma_50",
+    "price_vs_ma50",
+    "vol_regime",
+]
+
+FEATURE_SCHEMA_VERSION = "macro-sentiment-v1"
+
+_MODEL_CACHE: Dict[str, Tuple[pd.Timestamp, XGBRegressor, list, str]] = {}
 
 
 def predict_price(ticker: str, as_of: Optional[str] = None) -> float:
@@ -50,18 +70,22 @@ def get_model_artifacts(
             raise ValueError("Invalid 'as_of' date.")
         prices = prices[prices["ts"] <= as_of_ts]
 
-    if len(prices) < 60:
+    if len(prices) < 120:
         raise ValueError("Not enough data to train a price model. Ingest more history.")
 
     last_ts = pd.to_datetime(prices["ts"].max())
     cached = _MODEL_CACHE.get(ticker)
-    if cached is None or cached[0] != last_ts:
-        model, feature_cols = _train_model(prices)
-        _MODEL_CACHE[ticker] = (last_ts, model, feature_cols)
+    if (
+        cached is None
+        or cached[0] != last_ts
+        or cached[3] != FEATURE_SCHEMA_VERSION
+    ):
+        model, feature_cols = _train_model(prices, ticker)
+        _MODEL_CACHE[ticker] = (last_ts, model, feature_cols, FEATURE_SCHEMA_VERSION)
     else:
         model, feature_cols = cached[1], cached[2]
 
-    feats = make_features(prices)
+    feats = make_features(prices, ticker)
     row = latest_row(feats)
     X_latest = row[feature_cols]
 
@@ -73,23 +97,13 @@ def get_model_artifacts(
     return model, feature_cols, X_latest, X_bg, last_close
 
 
-def _train_model(prices: pd.DataFrame) -> Tuple[XGBRegressor, list]:
-    feats = make_features(prices)
+def _train_model(prices: pd.DataFrame, ticker: str) -> Tuple[XGBRegressor, list]:
+    feats = make_features(prices, ticker)
     feats = feats.dropna()
     if feats.empty:
         raise ValueError("Not enough usable rows to train the price model.")
 
-    feature_cols = [
-        "ret_1",
-        "ret_5",
-        "vol_5",
-        "vol_20",
-        "ma_5",
-        "ma_20",
-        "ma_ratio",
-        "range",
-        "vol_chg",
-    ]
+    feature_cols = list(FEATURE_COLS)
 
     X = feats[feature_cols]
     y = feats["y"]
@@ -107,4 +121,3 @@ def _train_model(prices: pd.DataFrame) -> Tuple[XGBRegressor, list]:
     )
     model.fit(X, y)
     return model, feature_cols
-

@@ -1,6 +1,8 @@
 from datetime import datetime
 import duckdb
 
+import pandas as pd
+
 
 def get_duckdb_connection(path: str = "data/finvizaard.duckdb") -> duckdb.DuckDBPyConnection:
     return duckdb.connect(path)
@@ -35,6 +37,15 @@ def init_duckdb_schema(conn: duckdb.DuckDBPyConnection) -> None:
         """
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_sentiment_ticker_date ON sentiment_cache(ticker, date)")
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ingest_meta (
+            ticker TEXT PRIMARY KEY,
+            synthetic INTEGER NOT NULL
+        )
+        """
+    )
 
 
 def insert_price_rows(conn: duckdb.DuckDBPyConnection, df) -> int:
@@ -127,24 +138,43 @@ def upsert_sentiment(conn: duckdb.DuckDBPyConnection, ticker: str, sentiment: di
     )
 
 
-def get_sentiment(conn: duckdb.DuckDBPyConnection, ticker: str) -> dict:
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    row = conn.execute(
+def get_sentiment(conn: duckdb.DuckDBPyConnection, ticker: str, as_of_ts) -> float:
+    """
+    Nearest cached sentiment score for this ticker to as_of_ts (by calendar day).
+    Returns 0.0 if no rows exist in sentiment_cache.
+    """
+    target = pd.Timestamp(as_of_ts).normalize()
+    rows = conn.execute(
         """
-        SELECT label, score, top_reason, article_count
+        SELECT date, score
         FROM sentiment_cache
-        WHERE ticker = ? AND date = ?
+        WHERE UPPER(ticker) = UPPER(?)
         """,
-        [ticker, date_str]
-    ).fetchone()
+        [ticker.strip()],
+    ).fetchall()
+    if not rows:
+        return 0.0
 
-    if not row:
-        return None
+    best_score = 0.0
+    best_days = None
+    for date_str, score in rows:
+        d = pd.to_datetime(date_str, errors="coerce")
+        if pd.isna(d):
+            continue
+        d = d.normalize()
+        days = abs((d - target).days)
+        if best_days is None or days < best_days:
+            best_days = days
+            best_score = float(score)
+    return best_score
 
-    return {
-        "label": row[0],
-        "score": float(row[1]),
-        "top_reason": row[2],
-        "article_count": int(row[3])
-    }
 
+def set_ingest_synthetic_flags(conn: duckdb.DuckDBPyConnection, tickers: list[str], synthetic: int) -> None:
+    """Mark whether the latest ingest for each ticker used synthetic OHLCV (1) or Yahoo (0)."""
+    t = [x.strip().upper() for x in tickers if x and str(x).strip()]
+    for sym in t:
+        conn.execute("DELETE FROM ingest_meta WHERE ticker = ?", [sym])
+        conn.execute(
+            "INSERT INTO ingest_meta (ticker, synthetic) VALUES (?, ?)",
+            [sym, int(synthetic)],
+        )
