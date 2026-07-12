@@ -146,6 +146,6 @@ Open your browser and navigate to `http://localhost:5173/` to interact with the 
 
 ### Author
 **Prince Pokharna**  
-GitHub: [@prince-pokharna](https://github.com/prince-pokharna)
-Email: prince187p0kharna@gmail.com
-LinkedIn: [prince-pokharna](https://linkedin.com/in/prince-pokharna-37a1b7329)
+-GitHub: [@prince-pokharna](https://github.com/prince-pokharna)
+-Email: prince187p0kharna@gmail.com
+-LinkedIn: [prince-pokharna](https://linkedin.com/in/prince-pokharna-37a1b7329)
