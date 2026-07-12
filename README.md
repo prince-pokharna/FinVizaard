@@ -29,3 +29,67 @@ Retail investors need directional signals from market data without writing code.
 ---
 
 ## System Architecture
+Raw Market Data (5+ years)
+↓
+Data Cleaning & Normalization
+↓
+Feature Engineering (12+ indicators)
+RSI · MACD · Bollinger Bands · Moving Averages · Volume · Volatility
+↓
+LSTM + Random Forest Ensemble
+↳ GridSearchCV Hyperparameter Tuning
+↳ K-Fold Cross-Validation
+↓
+Model Evaluation (MAE · RMSE · Directional Accuracy)
+↓
+Interactive Dashboard (10+ visualizations)
+Trends · Volatility Bands · Confidence Intervals
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| ML Models | LSTM, Random Forest, Ensemble Methods |
+| Framework | TensorFlow, Scikit-learn |
+| Data Processing | Pandas, NumPy, SciPy |
+| Visualization | Matplotlib, Seaborn |
+| Backend API | FastAPI |
+| Frontend | React.js / Next.js |
+| Database | MySQL |
+
+---
+
+## Quickstart
+
+```bash
+git clone https://github.com/prince-pokharna/FinVizaard.git
+cd FinVizaard
+pip install -r requirements.txt
+cd Backend/src
+python main.py
+```
+
+---
+
+## Feature Engineering — 12+ Indicators
+
+| Indicator | Type | Purpose |
+|-----------|------|---------|
+| RSI (14-period) | Momentum | Overbought/oversold detection |
+| MACD | Trend | Momentum crossover signals |
+| Bollinger Bands | Volatility | Price deviation from mean |
+| SMA (20, 50, 200) | Trend | Moving average baselines |
+| EMA (12, 26) | Trend | Exponential smoothing |
+| Volume Moving Avg | Volume | Liquidity signals |
+| ATR | Volatility | True range measure |
+
+---
+
+## Author
+
+**Prince Pokharna**
+- GitHub: [@prince-pokharna](https://github.com/prince-pokharna)
+- Email: prince187p0kharna@gmail.com
+- LinkedIn: [prince-pokharna](https://linkedin.com/in/prince-pokharna-37a1b7329)
