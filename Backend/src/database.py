@@ -1,11 +1,14 @@
 from datetime import datetime
+from pathlib import Path
 import duckdb
-
 import pandas as pd
 
 
 def get_duckdb_connection(path: str = "data/finvizaard.duckdb") -> duckdb.DuckDBPyConnection:
-    return duckdb.connect(path)
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    conn = duckdb.connect(path)
+    init_duckdb_schema(conn)
+    return conn
 
 
 def init_duckdb_schema(conn: duckdb.DuckDBPyConnection) -> None:
@@ -47,13 +50,40 @@ def init_duckdb_schema(conn: duckdb.DuckDBPyConnection) -> None:
         """
     )
 
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS macro_cache (
+            indicator TEXT,
+            date TEXT,
+            value DOUBLE,
+            PRIMARY KEY (indicator, date)
+        )
+        """
+    )
 
-def insert_price_rows(conn: duckdb.DuckDBPyConnection, df) -> int:
+
+def insert_price_rows(conn: duckdb.DuckDBPyConnection, df: pd.DataFrame) -> int:
     """
     Expects a pandas DataFrame with columns:
-    ticker, ts, open, high, low, close, volume
+    ticker, ts, open, high, low, close, volume.
+    Deduplicates and removes overlapping timestamps before inserting.
     """
-    conn.register("prices_df", df)
+    if df.empty:
+        return 0
+
+    clean_df = df.dropna(subset=["ts", "close"]).copy()
+    clean_df["ticker"] = clean_df["ticker"].astype(str).str.upper()
+    clean_df = clean_df.drop_duplicates(subset=["ticker", "ts"])
+
+    for ticker, group in clean_df.groupby("ticker"):
+        min_ts = group["ts"].min()
+        max_ts = group["ts"].max()
+        conn.execute(
+            "DELETE FROM prices WHERE UPPER(ticker) = UPPER(?) AND ts >= ? AND ts <= ?",
+            [ticker, min_ts, max_ts],
+        )
+
+    conn.register("prices_df", clean_df)
     conn.execute(
         """
         INSERT INTO prices
@@ -68,20 +98,20 @@ def fetch_prices_df(
     conn: duckdb.DuckDBPyConnection,
     ticker: str,
     *,
-    limit: int = 2000,
-):
+    limit: int = 2500,
+) -> pd.DataFrame:
     """
-    Returns a pandas dataframe sorted by ts asc.
+    Returns a pandas dataframe sorted by ts asc, guaranteed deduplicated.
     """
     return conn.execute(
         """
-        SELECT ts, open, high, low, close, volume
+        SELECT DISTINCT ON (ts) ts, open, high, low, close, volume
         FROM prices
-        WHERE ticker = ?
-        ORDER BY ts DESC
+        WHERE UPPER(ticker) = UPPER(?)
+        ORDER BY ts DESC, volume DESC
         LIMIT ?
         """,
-        [ticker, int(limit)],
+        [ticker.strip().upper(), int(limit)],
     ).df().sort_values("ts")
 
 
@@ -93,13 +123,13 @@ def fetch_candles(
 ):
     rows = conn.execute(
         """
-        SELECT ts, open, high, low, close
+        SELECT DISTINCT ON (ts) ts, open, high, low, close, volume
         FROM prices
-        WHERE ticker = ?
-        ORDER BY ts DESC
+        WHERE UPPER(ticker) = UPPER(?)
+        ORDER BY ts DESC, volume DESC
         LIMIT ?
         """,
-        [ticker, int(limit)],
+        [ticker.strip().upper(), int(limit)],
     ).fetchall()
 
     rows = list(reversed(rows))
@@ -110,6 +140,7 @@ def fetch_candles(
             "high": float(r[2]),
             "low": float(r[3]),
             "close": float(r[4]),
+            "volume": float(r[5]) if len(r) > 5 and r[5] is not None else 0.0,
         }
         for r in rows
     ]
@@ -117,10 +148,9 @@ def fetch_candles(
 
 def upsert_sentiment(conn: duckdb.DuckDBPyConnection, ticker: str, sentiment: dict):
     date_str = datetime.now().strftime("%Y-%m-%d")
-    # DuckDB doesn't have native UPSERT, so we delete and insert
     conn.execute(
-        "DELETE FROM sentiment_cache WHERE ticker = ? AND date = ?",
-        [ticker, date_str]
+        "DELETE FROM sentiment_cache WHERE UPPER(ticker) = UPPER(?) AND date = ?",
+        [ticker.strip().upper(), date_str]
     )
     conn.execute(
         """
@@ -128,7 +158,7 @@ def upsert_sentiment(conn: duckdb.DuckDBPyConnection, ticker: str, sentiment: di
         VALUES (?, ?, ?, ?, ?, ?)
         """,
         [
-            ticker,
+            ticker.strip().upper(),
             date_str,
             sentiment.get("label", "neutral"),
             float(sentiment.get("score", 0.0)),
@@ -150,7 +180,7 @@ def get_sentiment(conn: duckdb.DuckDBPyConnection, ticker: str, as_of_ts) -> flo
         FROM sentiment_cache
         WHERE UPPER(ticker) = UPPER(?)
         """,
-        [ticker.strip()],
+        [ticker.strip().upper()],
     ).fetchall()
     if not rows:
         return 0.0
@@ -178,3 +208,44 @@ def set_ingest_synthetic_flags(conn: duckdb.DuckDBPyConnection, tickers: list[st
             "INSERT INTO ingest_meta (ticker, synthetic) VALUES (?, ?)",
             [sym, int(synthetic)],
         )
+
+
+def get_cached_macro(conn: duckdb.DuckDBPyConnection, indicator: str, start_date: str, end_date: str) -> pd.Series:
+    rows = conn.execute(
+        """
+        SELECT date, value
+        FROM macro_cache
+        WHERE UPPER(indicator) = UPPER(?) AND date >= ? AND date <= ?
+        ORDER BY date ASC
+        """,
+        [indicator.strip().upper(), start_date, end_date],
+    ).fetchall()
+    if not rows:
+        return pd.Series(dtype=float, name=indicator)
+    idx = pd.to_datetime([r[0] for r in rows])
+    return pd.Series([float(r[1]) for r in rows], index=idx, name=indicator)
+
+
+def store_cached_macro(conn: duckdb.DuckDBPyConnection, indicator: str, series: pd.Series) -> None:
+    if series.empty:
+        return
+    for date_val, val in series.items():
+        if pd.isna(val):
+            continue
+        d_str = pd.Timestamp(date_val).strftime("%Y-%m-%d")
+        conn.execute(
+            "DELETE FROM macro_cache WHERE indicator = ? AND date = ?",
+            [indicator.upper(), d_str],
+        )
+        conn.execute(
+            "INSERT INTO macro_cache (indicator, date, value) VALUES (?, ?, ?)",
+            [indicator.upper(), d_str, float(val)],
+        )
+
+
+def get_stored_tickers(conn: duckdb.DuckDBPyConnection) -> list[str]:
+    rows = conn.execute(
+        "SELECT DISTINCT ticker FROM prices ORDER BY ticker"
+    ).fetchall()
+    return [r[0] for r in rows]
+
