@@ -1,2 +1,12 @@
 .env
 .idea/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+Backend/src/__pycache__/
+Backend/__pycache__/
+node_modules/
+frontend/node_modules/
+.DS_Store
