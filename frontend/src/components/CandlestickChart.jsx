@@ -1,11 +1,16 @@
 import { createChart } from "lightweight-charts";
 import { useEffect, useRef, useState, useMemo } from "react";
+import { WS_BASE_URL } from "../apiConfig";
 
 export default function CandlestickChart({ data, predictedPrice, ticker }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
+  const wsRef = useRef(null);
+
   const [timeRange, setTimeRange] = useState("ALL");
+  const [liveTick, setLiveTick] = useState(null);
+  const [wsStatus, setWsStatus] = useState("disconnected"); // 'connecting', 'live', 'disconnected'
 
   // Deduplicate and sort data strictly ascending by time
   const cleanData = useMemo(() => {
@@ -28,6 +33,66 @@ export default function CandlestickChart({ data, predictedPrice, ticker }) {
     return arr;
   }, [data]);
 
+  // WebSocket Live Stream Connection
+  useEffect(() => {
+    if (!ticker) return;
+
+    setWsStatus("connecting");
+    setLiveTick(null);
+
+    const wsUrl = `${WS_BASE_URL}/ws/stream/${ticker.trim().toUpperCase()}`;
+    let socket;
+    try {
+      socket = new WebSocket(wsUrl);
+      wsRef.current = socket;
+
+      socket.onopen = () => {
+        setWsStatus("live");
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "tick") {
+            setLiveTick(msg);
+            // Real-time tick update to active candle
+            if (seriesRef.current && cleanData.length > 0) {
+              const lastCandle = cleanData[cleanData.length - 1];
+              const updatedCandle = {
+                time: lastCandle.time,
+                open: lastCandle.open,
+                high: Math.max(lastCandle.high, msg.price),
+                low: Math.min(lastCandle.low, msg.price),
+                close: msg.price,
+              };
+              seriesRef.current.update(updatedCandle);
+            }
+          }
+        } catch (e) {
+          console.warn("WS parse error:", e);
+        }
+      };
+
+      socket.onerror = () => {
+        setWsStatus("disconnected");
+      };
+
+      socket.onclose = () => {
+        setWsStatus("disconnected");
+      };
+    } catch (err) {
+      console.warn("WebSocket init error:", err);
+      setWsStatus("disconnected");
+    }
+
+    return () => {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.close();
+      }
+    };
+  }, [ticker, cleanData]);
+
+  // Chart initialization
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -149,13 +214,31 @@ export default function CandlestickChart({ data, predictedPrice, ticker }) {
     <div className="panel chartPanel">
       <div className="chartHeader">
         <div>
-          <h3>{ticker || "Asset"} Interactive Chart</h3>
-          {lastCandle && (
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <h3 style={{ margin: 0 }}>{ticker || "Asset"} Interactive Chart</h3>
+            <span className={`liveStreamBadge ${wsStatus}`}>
+              <span className="liveStreamDot"></span>
+              {wsStatus === "live" ? "LIVE STREAM" : wsStatus === "connecting" ? "CONNECTING..." : "OFFLINE"}
+            </span>
+          </div>
+
+          {liveTick ? (
+            <div className="liveTickBar">
+              <span className="liveTickPrice">${liveTick.price.toFixed(2)}</span>
+              <span className={`liveTickChange ${liveTick.change >= 0 ? "positive" : "negative"}`}>
+                {liveTick.change >= 0 ? "+" : ""}{liveTick.change.toFixed(2)} ({liveTick.change_pct >= 0 ? "+" : ""}{liveTick.change_pct.toFixed(2)}%)
+              </span>
+              <span className="liveTickMeta">Bid: ${liveTick.bid.toFixed(2)} | Ask: ${liveTick.ask.toFixed(2)}</span>
+              <span className="liveTickMeta">Vol: {liveTick.volume.toLocaleString()}</span>
+              <span className={`liveTickSignal ${liveTick.signal}`}>{liveTick.signal.toUpperCase()}</span>
+            </div>
+          ) : lastCandle ? (
             <span className="lastCandleBadge">
               Last Close: <strong>${lastCandle.close.toFixed(2)}</strong> ({lastCandle.time})
             </span>
-          )}
+          ) : null}
         </div>
+
         <div className="rangeSelector">
           {["1M", "3M", "6M", "1Y", "ALL"].map((r) => (
             <button
@@ -169,7 +252,9 @@ export default function CandlestickChart({ data, predictedPrice, ticker }) {
           ))}
         </div>
       </div>
+
       <div ref={containerRef} className="chartContainer" />
+
       <div className="chartLegend">
         <span><i className="legendDot green"></i> Bullish Session</span>
         <span><i className="legendDot red"></i> Bearish Session</span>

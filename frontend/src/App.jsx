@@ -6,9 +6,11 @@ import ShapBarChart from "./components/ShapBarChart";
 import RegimeDashboard from "./components/RegimeDashboard";
 import BacktestDashboard from "./components/BacktestDashboard";
 import ComparisonDashboard from "./components/ComparisonDashboard";
+import PortfolioDashboard from "./components/PortfolioDashboard";
+import { API_BASE_URL } from "./apiConfig";
 
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000",
+  baseURL: API_BASE_URL,
 });
 
 function todayISO() {
@@ -221,6 +223,13 @@ export default function App() {
             </button>
             <button
               type="button"
+              className={`tabBtn ${activeTab === "portfolio" ? "active" : ""}`}
+              onClick={() => setActiveTab("portfolio")}
+            >
+              🎯 Portfolio & Risk
+            </button>
+            <button
+              type="button"
               className={`tabBtn ${activeTab === "compare" ? "active" : ""}`}
               onClick={() => setActiveTab("compare")}
             >
@@ -430,6 +439,10 @@ export default function App() {
 
         {activeTab === "backtest" && (
           <BacktestDashboard ticker={cleanTicker} />
+        )}
+
+        {activeTab === "portfolio" && (
+          <PortfolioDashboard apiBaseUrl={API_BASE_URL} />
         )}
 
         {activeTab === "compare" && (

@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "../apiConfig";
 
 const DEFAULT_TICKERS = ["AAPL", "MSFT", "NVDA", "GOOGL", "TSLA", "SPY"];
 
 export default function ComparisonDashboard({
   onSelectTicker,
   activeTicker,
-  apiBaseUrl = "http://127.0.0.1:8000",
+  apiBaseUrl = API_BASE_URL,
 }) {
   const [tickers, setTickers] = useState(DEFAULT_TICKERS);
   const [newTicker, setNewTicker] = useState("");

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "../apiConfig";
 
-export default function RegimeDashboard({ ticker, apiBaseUrl = "http://127.0.0.1:8000" }) {
+export default function RegimeDashboard({ ticker, apiBaseUrl = API_BASE_URL }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
